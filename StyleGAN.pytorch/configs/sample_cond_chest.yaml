@@ -1,0 +1,22 @@
+# Config file for CelebA dataset (200k)
+
+output_dir: '/data1/shared/jessica/data/labelGAN/output_conditional_15'
+structure: 'linear'
+device_id: ('1')
+conditional: True
+loss: 'conditional-loss'
+from_scratch: False
+n_classes: 15
+dataset:
+  channels: 3
+  img_dir: '/data1/shared/jessica/data/labelGAN/train_images/imgs'
+  folder: False
+  resolution: 1024
+model:
+  gen:
+    mapping_layers: 8
+    # Negative numbers represent no truncation layers
+    truncation_psi: -1.
+sched:
+  epochs: [4,8,16,32,16,8,16,4,4]
+  batch_sizes: [128, 128, 128, 64, 32, 16, 8, 8, 8]

@@ -1,0 +1,14 @@
+# Config file for CelebA dataset (200k)
+
+output_dir: '/data1/jessica/data/labelGAN/celebA/ckpts'
+structure: 'linear'
+device_id: ('1')
+num_works: 10
+checkpoint_factor: 2
+dataset:
+  img_dir: '/data1/jessica/data/labelGAN/celebA/celeba/img_align_celeba'
+  folder: False
+  resolution: 512
+sched:
+  epochs: [4,4,8,8,16,8,8,12]
+  batch_sizes: [512, 512, 256, 256, 128, 64, 32, 16]
