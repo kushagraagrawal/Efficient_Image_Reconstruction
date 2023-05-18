@@ -92,6 +92,11 @@ class FlatDirectoryImageDataset(Dataset):
 class FoldersDistributedDataset(Dataset):
     """ pyTorch Dataset wrapper for folder distributed dataset """
 
+    '''
+        Modify for inpainting, same as the Context Encoder
+    
+    '''
+
     def __setup_files(self):
         """
         private helper for setting up the files_list

@@ -543,6 +543,9 @@ class StyleGAN:
         self.dis_optim = torch.optim.Adam(self.dis.parameters(), lr=learning_rate, betas=(beta_1, beta_2), eps=eps)
 
     def __setup_loss(self, loss):
+        '''
+            Add condition for inpainting losses, or rather create a class in Losses.py for it
+        '''
         if isinstance(loss, str):
             loss = loss.lower()  # lowercase the string
             
@@ -607,6 +610,10 @@ class StyleGAN:
         :param alpha: current alpha for fade-in
         :return: current loss (Wasserstein loss)
         """
+
+        '''
+            Modify this for inpainting as well
+        '''
         
         real_samples = self.__progressive_down_sampling(real_batch, depth, alpha)
 
@@ -640,6 +647,10 @@ class StyleGAN:
         :param alpha: value of alpha for fade-in effect
         :return: current loss (Wasserstein estimate)
         """
+
+        '''
+            Modify this and gen_loss for inpainting
+        '''
 
         real_samples = self.__progressive_down_sampling(real_batch, depth, alpha)
 
