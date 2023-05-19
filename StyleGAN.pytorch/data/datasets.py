@@ -88,6 +88,98 @@ class FlatDirectoryImageDataset(Dataset):
         # return the image:
         return img
 
+class FoldersDistributedInpaintingDataset(Dataset):
+    """ pyTorch Dataset wrapper for folder distributed dataset """
+
+    '''
+        Modify for inpainting, same as the Context Encoder
+    
+    '''
+
+    def __setup_files(self):
+        """
+        private helper for setting up the files_list
+        :return: files => list of paths of files
+        """
+
+        dir_names = os.listdir(self.data_dir)
+        files = []  # initialize to empty list
+
+        for dir_name in dir_names:
+            file_path = os.path.join(self.data_dir, dir_name)
+            file_names = os.listdir(file_path)
+            for file_name in file_names:
+                possible_file = os.path.join(file_path, file_name)
+                print(possible_file)
+                if os.path.isfile(possible_file) and possible_file[0] != ".":
+                    files.append(possible_file)
+
+        # return the files list
+        return files
+
+    def __init__(self, data_dir, img_size = 128, mask_size = 64, transform=None):
+        """
+        constructor for the class
+        :param data_dir: path to the directory containing the data
+        :param transform: transforms to be applied to the images
+        """
+        # define the state of the object
+        self.data_dir = data_dir
+        self.transform = transform
+
+        self.img_size = img_size
+        self.mask_size = mask_size
+
+        # setup the files for reading
+        self.files = self.__setup_files()
+
+    def __len__(self):
+        """
+        compute the length of the dataset
+        :return: len => length of dataset
+        """
+        return len(self.files)
+    
+    def apply_center_mask(self, img):
+        """Mask center part of image"""
+        # Get upper-left pixel coordinate
+        i = (self.img_size - self.mask_size) // 2
+        masked_img = img.clone()
+        masked_part = masked_img[:, i : i + self.mask_size, i : i + self.mask_size]
+        masked_img[:, i : i + self.mask_size, i : i + self.mask_size] = 1
+
+        return masked_img, masked_part, i
+
+    def __getitem__(self, idx):
+        """
+        obtain the image (read and transform)
+        :param idx: index of the file required
+        :return: img => image array
+        """
+        from PIL import Image
+
+        # read the image:
+        img_name = self.files[idx]
+        if img_name[-4:] == ".npy":
+            img = np.load(img_name)
+            img = Image.fromarray(img.squeeze(0).transpose(1, 2, 0))
+        else:
+            img = Image.open(img_name).convert('RGB')
+
+        # apply the transforms on the image
+        if self.transform is not None:
+            img = self.transform(img)
+
+        if img.shape[0] >= 4:
+            # ignore the alpha channel
+            # in the image if it exists
+            img = img[:3, :, :]
+
+        masked_img, masked_part, i = self.apply_center_mask(img)
+
+        # return the image:
+        return {"GTImg": img, "inputImage": masked_img, "masked_part": masked_part, "coord": i}
+
 
 class FoldersDistributedDataset(Dataset):
     """ pyTorch Dataset wrapper for folder distributed dataset """

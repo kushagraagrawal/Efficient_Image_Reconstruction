@@ -4,6 +4,7 @@ output_dir: '/home/k4agrawal/Efficient_Image_Reconstruction/StyleGAN.pytorch/che
 structure: 'linear'
 device_id: ('0')
 checkpoint_factor: 4
+inpainting: True
 feedback_factor: 4
 dataset:
   img_dir: '/home/k4agrawal/Efficient_Image_Reconstruction/StyleGAN.pytorch/ffhq'

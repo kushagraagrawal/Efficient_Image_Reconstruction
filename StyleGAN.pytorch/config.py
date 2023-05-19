@@ -29,6 +29,7 @@ cfg.num_works = 0
 cfg.num_samples = 36
 cfg.feedback_factor = 10
 cfg.checkpoint_factor = 10
+cfg.inpainting = False
 
 # ---------------------------------------------------------------------------- #
 # Options for scheduler

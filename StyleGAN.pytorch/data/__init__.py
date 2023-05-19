@@ -13,7 +13,7 @@ import torch
 import os
 from PIL import Image, ImageOps
 import numpy as np
-from data.datasets import FlatDirectoryImageDataset, FoldersDistributedDataset
+from data.datasets import FlatDirectoryImageDataset, FoldersDistributedDataset, FoldersDistributedInpaintingDataset
 from data.transforms import get_transform
 import torchvision.transforms
 from torchvision.transforms import Compose, ToTensor, Resize
@@ -77,11 +77,13 @@ class AugmentationDatasetEmbedded(Dataset):
 
 
 
-def make_dataset(cfg, conditional=False):
+def make_dataset(cfg, conditional=False, inpainting=False):
     
     if conditional:
         dataset = AugmentationDatasetEmbedded(root_dir='/data1/shared/jessica/drive_data/train_images_embedded/')#ImageFolder
         return dataset
+    elif inpainting:
+        Dataset = FoldersDistributedInpaintingDataset
     else:
         if cfg.folder:
             Dataset = FoldersDistributedDataset 

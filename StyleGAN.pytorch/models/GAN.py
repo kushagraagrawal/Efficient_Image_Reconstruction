@@ -458,7 +458,7 @@ class StyleGAN:
     def __init__(self, structure, resolution, num_channels, latent_size,
                  g_args, d_args, g_opt_args, d_opt_args, conditional=False,from_scratch=False,
                  n_classes=0, loss="relativistic-hinge", drift=0.001, d_repeats=1,
-                 use_ema=False, ema_decay=0.999, device=torch.device("cpu")):
+                 use_ema=False, ema_decay=0.999, device=torch.device("cpu"), inpainting=False):
         """
         Wrapper around the Generator and the Discriminator.
 
@@ -481,6 +481,7 @@ class StyleGAN:
         :param use_ema: boolean for whether to use exponential moving averages
         :param ema_decay: value of mu for ema
         :param device: device to run the GAN on (GPU / CPU)
+        :param inpainting: If the input task is image inpainting
         """
         # state of the object
         assert structure in ['fixed', 'linear']
@@ -498,6 +499,8 @@ class StyleGAN:
 
         self.use_ema = use_ema
         self.ema_decay = ema_decay
+
+        self.inpainting = inpainting
 
         # Create the Generator and the Discriminator
         self.gen = Generator(num_channels=num_channels,
@@ -776,6 +779,10 @@ class StyleGAN:
                     if self.conditional:
                         images, labels = batch
                         labels = labels.to(self.device)
+                    elif self.inpainting:
+                        inputDict = batch
+                        images = inputDict['inputImage']
+                        labels = {"GTImg": inputDict['GTImg'], "masked_part": inputDict['masked_part'], "coord": inputDict['coord']}
                     else:
                         images = batch
                         labels = None
