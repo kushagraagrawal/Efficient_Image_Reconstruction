@@ -227,3 +227,42 @@ class LogisticGAN(GANLoss):
         f_preds = self.dis(fake_samps, height, alpha)
 
         return torch.mean(nn.Softplus()(-f_preds))
+
+class InpaintingLoss(GANLoss):
+
+    def __init__(self, dis):
+        super().__init__(dis)
+        self.adversarial_loss = torch.nn.MSELoss()
+        self.pixelwise_loss = torch.nn.L1Loss()  
+
+    def dis_loss(self, real_samps, fake_samps, height, alpha):
+        # Obtain predictions
+        r_preds = self.dis(real_samps, height, alpha)
+        f_preds = self.dis(fake_samps, height, alpha)
+
+        # difference between real and fake:
+        r_f_diff = r_preds - torch.mean(f_preds)
+
+        # difference between fake and real samples
+        f_r_diff = f_preds - torch.mean(r_preds)
+
+        # return the loss
+        loss = (torch.mean(nn.ReLU()(1 - r_f_diff))
+                + torch.mean(nn.ReLU()(1 + f_r_diff)))
+
+        return loss
+
+    def gen_loss(self, real_samps, fake_samps, height, alpha):
+        # Obtain predictions
+        r_preds = self.dis(real_samps, height, alpha)
+        f_preds = self.dis(fake_samps, height, alpha)
+
+        # difference between real and fake:
+        r_f_diff = r_preds - torch.mean(f_preds)
+
+        # difference between fake and real samples
+        f_r_diff = f_preds - torch.mean(r_preds)
+
+        # return the loss
+        return (torch.mean(nn.ReLU()(1 + r_f_diff))
+                + torch.mean(nn.ReLU()(1 - f_r_diff)))

@@ -613,10 +613,6 @@ class StyleGAN:
         :param alpha: current alpha for fade-in
         :return: current loss (Wasserstein loss)
         """
-
-        '''
-            Modify this for inpainting as well
-        '''
         
         real_samples = self.__progressive_down_sampling(real_batch, depth, alpha)
 
@@ -628,6 +624,13 @@ class StyleGAN:
             if not self.conditional:
                 loss = self.loss.dis_loss(
                     real_samples, fake_samples, depth, alpha)
+            elif self.inpainting:
+                '''
+                    Inside this loss function, can modify it for the losses required,
+                    And modify the networks to only produce the inpainted output
+                '''
+                loss = self.loss.dis_loss(
+                    real_samples, fake_samples, labels, depth, alpha)
             else:
                 loss = self.loss.dis_loss(
                     real_samples, fake_samples, labels, depth, alpha)
@@ -663,6 +666,8 @@ class StyleGAN:
         # Change this implementation for making it compatible for relativisticGAN
         if not self.conditional:
             loss = self.loss.gen_loss(real_samples, fake_samples, depth, alpha)
+        elif self.inpainting:
+            loss = self.loss.gen_loss(real_samples, fake_samples, labels, depth, alpha)
         else:
             loss = self.loss.gen_loss(
                 real_samples, fake_samples, labels, depth, alpha)
