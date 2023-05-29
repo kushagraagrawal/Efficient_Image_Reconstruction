@@ -13,8 +13,6 @@ from ffhqDataset import FFHQDataset
 import numpy as np
 from tqdm import tqdm
 
-from ignite.engine import Engine
-from ignite.metrics import FID, InceptionScore
 import PIL.Image as Image
 import os
 import glob
@@ -60,7 +58,7 @@ def _weights_init(m):
         torch.nn.init.normal_(m.weight, 0.0, 0.02)
         torch.nn.init.constant_(m.bias, 0)
         
-def display_progress(cond, fake, real, figsize=(10,5)):
+def display_progress(cond, fake, real, epoch, figsize=(10,5)):
     cond = cond.detach().cpu().permute(1, 2, 0)
     fake = fake.detach().cpu().permute(1, 2, 0)
     real = real.detach().cpu().permute(1, 2, 0)
@@ -69,7 +67,8 @@ def display_progress(cond, fake, real, figsize=(10,5)):
     ax[0].imshow(cond)
     ax[2].imshow(fake)
     ax[1].imshow(real)
-    plt.show()
+    plt.savefig("progress_" + str(epoch) + ".png")
+    # plt.show()
 
 gen = Generator(3, 3).to(device)
 dis = PatchGAN(3 + 3).to(device)
@@ -112,7 +111,7 @@ for e in range(20):
     dis_loss = 0
     gen.train()
     patch_gan.train()
-    for step, (data) in enumerate(trainDL):
+    for step, (data) in enumerate(tqdm(trainDL)):
         real, conditional, _ = data
         real = real.to(device)
         conditional = conditional.to(device)
@@ -129,7 +128,7 @@ for e in range(20):
         loss.backward()
         opt_D.step()
                
-        print("step loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/(step+1), dis_loss/(step+1)))
+        # print("step loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/(step+1), dis_loss/(step+1)))
     
     print("epoch gen loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/len(trainDL), dis_loss/len(trainDL)))
     gen_loss_epoch.append(gen_loss/len(trainDL))
@@ -140,7 +139,7 @@ for e in range(20):
         dis_loss = 0
         gen.eval()
         patch_gan.eval()
-        for step, (data) in enumerate(valDL):
+        for step, (data) in enumerate(tqdm(valDL)):
             real, conditional, _, _ = data
             real = real.to(device)
             conditional = conditional.to(device)
@@ -151,8 +150,9 @@ for e in range(20):
             loss = _disc_step(real, conditional)
             dis_loss += loss.item()
 
-            print("step val loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/(step+1), dis_loss/(step+1)))
+            # print("step val loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/(step+1), dis_loss/(step+1)))
         
+        print("step val loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/len(valDL), dis_loss/len(valDL)))
         if((gen_loss + dis_loss) < best_val_loss):
             best_val_loss = gen_loss + dis_loss
             torch.save({
@@ -164,8 +164,8 @@ for e in range(20):
             }, "checkpoint.ckpt")
 
     if(e%1 == 0):
-        _, (real, conditional) = next(enumerate(testDL))
+        _, (real, conditional, _, _) = next(enumerate(testDL))
         conditional = conditional.to(device)
         real = real.to(device)
         fake = gen(conditional).detach()
-        display_progress(conditional[0], fake[0], real[0])
+        display_progress(conditional[0], fake[0], real[0], e+1)
