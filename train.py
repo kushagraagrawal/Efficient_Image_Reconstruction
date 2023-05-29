@@ -106,6 +106,7 @@ def _disc_step(real_images, conditioned_images):
 
 gen_loss_epoch = []
 dis_loss_epoch = []
+best_val_loss = np.inf
 for e in range(20):
     gen_loss = 0
     dis_loss = 0
@@ -133,9 +134,36 @@ for e in range(20):
     print("epoch gen loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/len(trainDL), dis_loss/len(trainDL)))
     gen_loss_epoch.append(gen_loss/len(trainDL))
     dis_loss_epoch.append(dis_loss/len(trainDL))
-    if(e%1 == 0):
+
+    with torch.no_grad():
+        gen_loss = 0
+        dis_loss = 0
         gen.eval()
         patch_gan.eval()
+        for step, (data) in enumerate(valDL):
+            real, conditional, _, _ = data
+            real = real.to(device)
+            conditional = conditional.to(device)
+
+            loss = _gen_step(real, conditional)
+            gen_loss += loss.item()
+
+            loss = _disc_step(real, conditional)
+            dis_loss += loss.item()
+
+            print("step val loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/(step+1), dis_loss/(step+1)))
+        
+        if((gen_loss + dis_loss) < best_val_loss):
+            best_val_loss = gen_loss + dis_loss
+            torch.save({
+                "gen": gen.state_dict(),
+                "dis": dis.state_dict(),
+                "epoch": e,
+                "optD": opt_D.state_dict(),
+                "optG": opt_G.state_dict(),
+            }, "checkpoint.ckpt")
+
+    if(e%1 == 0):
         _, (real, conditional) = next(enumerate(testDL))
         conditional = conditional.to(device)
         real = real.to(device)
