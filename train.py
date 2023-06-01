@@ -17,17 +17,24 @@ import PIL.Image as Image
 import os
 import glob
 from sklearn.model_selection import train_test_split
+import argparse
+
+parser = argparse.ArgumentParser(description='training Params')
+parser.add_argument('--checkpoint', default=None, help='restore training from checkpoint', type=str)
+parser.add_argument('--epochs', default=25, help='number of training epochs', type=int)
+
+args = parser.parse_args()
 
 
 writer = SummaryWriter()
 
-folders = sorted(list(os.listdir('StyleGAN.pytorch/ffhq')))[1:]
+folders = sorted(list(os.listdir('ffhq')))[1:]
 allImages = []
-root = 'StyleGAN.pytorch/ffhq'
+root = 'ffhq'
 for folder in folders:
     allImages.extend(sorted(glob.glob("%s/%s/*.png" %(root,folder))))
 
-allImages, _ = train_test_split(allImages, test_size=0.75, random_state=42) # training on 75% data
+allImages, _ = train_test_split(allImages, test_size=0.5, random_state=42) # training on 75% data
     
 trainImage, testImage = train_test_split(allImages, test_size=0.2, random_state=42)
 valImage, testImage = train_test_split(testImage, test_size=0.5, random_state=42)
@@ -67,7 +74,7 @@ def display_progress(cond, fake, real, epoch, figsize=(10,5)):
     ax[0].imshow(cond)
     ax[2].imshow(fake)
     ax[1].imshow(real)
-    plt.savefig("progress_" + str(epoch) + ".png")
+    plt.savefig("results/progress_" + str(epoch) + ".png")
     # plt.show()
 
 gen = Generator(3, 3).to(device)
@@ -75,7 +82,7 @@ dis = PatchGAN(3 + 3).to(device)
 gen = gen.apply(_weights_init)
 patch_gan = dis.apply(_weights_init)
 adversarial_loss = torch.nn.BCEWithLogitsLoss().to(device)
-pixelwise_loss = torch.nn.L1Loss().to(device)
+pixelwise_loss = torch.nn.MSELoss().to(device)
 
 opt_G = torch.optim.Adam(gen.parameters(), lr=1e-4)
 opt_D = torch.optim.Adam(dis.parameters(), lr=1e-4)
@@ -106,12 +113,26 @@ def _disc_step(real_images, conditioned_images):
 gen_loss_epoch = []
 dis_loss_epoch = []
 best_val_loss = np.inf
-for e in range(20):
+
+epoch = 0
+trainIter = 0
+valIter = 0
+if(args.checkpoint):
+    checkpoint = torch.load(args.checkpoint)
+    gen.load_state_dict(checkpoint['gen'])
+    dis.load_state_dict(checkpoint['dis'])
+    opt_D.load_state_dict(checkpoint['optD'])
+    opt_G.load_state_dict(checkpoint['optG'])
+    epoch = checkpoint['epoch']
+    best_val_loss = checkpoint['best_loss']
+
+for e in range(epoch +1, args.epochs):
     gen_loss = 0
     dis_loss = 0
     gen.train()
     patch_gan.train()
     for step, (data) in enumerate(tqdm(trainDL)):
+        trainIter += 1
         real, conditional, _ = data
         real = real.to(device)
         conditional = conditional.to(device)
@@ -121,16 +142,22 @@ for e in range(20):
         gen_loss += loss.item()
         loss.backward()
         opt_G.step()
-        
+
+        writer.add_scalar("Generator loss/train_iteration", loss.item(), trainIter)
+
         opt_D.zero_grad()
         loss = _disc_step(real, conditional)
         dis_loss += loss.item()
         loss.backward()
         opt_D.step()
+        writer.add_scalar("Discriminator loss/train_iteration", loss.item(), trainIter)
                
         # print("step loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/(step+1), dis_loss/(step+1)))
     
     print("epoch gen loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/len(trainDL), dis_loss/len(trainDL)))
+    writer.add_scalar("Epoch loss Generator/epoch", gen_loss/len(trainDL), e)
+    writer.add_scalar("Epoch loss Discriminator/epoch", dis_loss/len(trainDL), e)
+
     gen_loss_epoch.append(gen_loss/len(trainDL))
     dis_loss_epoch.append(dis_loss/len(trainDL))
 
@@ -140,6 +167,7 @@ for e in range(20):
         gen.eval()
         patch_gan.eval()
         for step, (data) in enumerate(tqdm(valDL)):
+            valIter += 1
             real, conditional, _, _ = data
             real = real.to(device)
             conditional = conditional.to(device)
@@ -147,12 +175,18 @@ for e in range(20):
             loss = _gen_step(real, conditional)
             gen_loss += loss.item()
 
+            writer.add_scalar("Generator loss/val_iteration", loss.item(), valIter)
+
             loss = _disc_step(real, conditional)
             dis_loss += loss.item()
+
+            writer.add_scalar("Discriminator loss/val_iteration", loss.item(), valIter)
 
             # print("step val loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/(step+1), dis_loss/(step+1)))
         
         print("step val loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/len(valDL), dis_loss/len(valDL)))
+        writer.add_scalar("Epoch loss Generator/epoch", gen_loss/len(valDL), e)
+        writer.add_scalar("Epoch loss Discriminator/epoch", dis_loss/len(valDL), e)
         if((gen_loss + dis_loss) < best_val_loss):
             best_val_loss = gen_loss + dis_loss
             torch.save({
@@ -161,11 +195,12 @@ for e in range(20):
                 "epoch": e,
                 "optD": opt_D.state_dict(),
                 "optG": opt_G.state_dict(),
-            }, "checkpoint.ckpt")
+                "best_loss": best_val_loss,
+            }, "checkpoint_50.ckpt")
 
     if(e%1 == 0):
         _, (real, conditional, _, _) = next(enumerate(testDL))
         conditional = conditional.to(device)
         real = real.to(device)
         fake = gen(conditional).detach()
-        display_progress(conditional[0], fake[0], real[0], e+1)
+        display_progress(conditional[0], fake[0], real[0], e)
