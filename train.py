@@ -34,7 +34,7 @@ root = 'ffhq'
 for folder in folders:
     allImages.extend(sorted(glob.glob("%s/%s/*.png" %(root,folder))))
 
-allImages, _ = train_test_split(allImages, test_size=0.5, random_state=42) # training on 75% data
+# allImages, _ = train_test_split(allImages, test_size=0.25, random_state=42) # training on 75% data
     
 trainImage, testImage = train_test_split(allImages, test_size=0.2, random_state=42)
 valImage, testImage = train_test_split(testImage, test_size=0.5, random_state=42)
@@ -96,7 +96,7 @@ def _gen_step(real_images, conditioned_images):
 
     # calculate reconstruction loss
     recon_loss = pixelwise_loss(fake_images, real_images)
-    lambda_recon = 200
+    lambda_recon = 100
 
     return adver_loss + lambda_recon * recon_loss
 
@@ -127,6 +127,7 @@ if(args.checkpoint):
     best_val_loss = checkpoint['best_loss']
 
 for e in range(epoch +1, args.epochs):
+    print("Epoch %d"%(e))
     gen_loss = 0
     dis_loss = 0
     gen.train()
@@ -155,8 +156,8 @@ for e in range(epoch +1, args.epochs):
         # print("step loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/(step+1), dis_loss/(step+1)))
     
     print("epoch gen loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/len(trainDL), dis_loss/len(trainDL)))
-    writer.add_scalar("Epoch loss Generator/epoch", gen_loss/len(trainDL), e)
-    writer.add_scalar("Epoch loss Discriminator/epoch", dis_loss/len(trainDL), e)
+    writer.add_scalar("Epoch loss train Generator/epoch", gen_loss/len(trainDL), e)
+    writer.add_scalar("Epoch loss train Discriminator/epoch", dis_loss/len(trainDL), e)
 
     gen_loss_epoch.append(gen_loss/len(trainDL))
     dis_loss_epoch.append(dis_loss/len(trainDL))
@@ -185,10 +186,10 @@ for e in range(epoch +1, args.epochs):
             # print("step val loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/(step+1), dis_loss/(step+1)))
         
         print("step val loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/len(valDL), dis_loss/len(valDL)))
-        writer.add_scalar("Epoch loss Generator/epoch", gen_loss/len(valDL), e)
-        writer.add_scalar("Epoch loss Discriminator/epoch", dis_loss/len(valDL), e)
-        if((gen_loss + dis_loss) < best_val_loss):
-            best_val_loss = gen_loss + dis_loss
+        writer.add_scalar("Epoch loss val Generator/epoch", gen_loss/len(valDL), e)
+        writer.add_scalar("Epoch loss val Discriminator/epoch", dis_loss/len(valDL), e)
+        if((gen_loss/len(valDL)) < best_val_loss):
+            best_val_loss = gen_loss/len(valDL)
             torch.save({
                 "gen": gen.state_dict(),
                 "dis": dis.state_dict(),
@@ -196,7 +197,7 @@ for e in range(epoch +1, args.epochs):
                 "optD": opt_D.state_dict(),
                 "optG": opt_G.state_dict(),
                 "best_loss": best_val_loss,
-            }, "checkpoint_50.ckpt")
+            }, "checkpoint_100.ckpt")
 
     if(e%1 == 0):
         _, (real, conditional, _, _) = next(enumerate(testDL))
