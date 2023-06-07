@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from pix2pix import Generator, PatchGAN
 from augment import AugmentPipe
 from ffhqDataset import FFHQDataset
+from contrastive_head import CLHead
 import numpy as np
 from tqdm import tqdm
 
@@ -19,10 +20,15 @@ import os
 import glob
 from sklearn.model_selection import train_test_split
 import argparse
+import copy
 
 parser = argparse.ArgumentParser(description='training Params')
 parser.add_argument('--checkpoint', default=None, help='restore training from checkpoint', type=str)
 parser.add_argument('--epochs', default=25, help='number of training epochs', type=int)
+parser.add_argument('--momentum', default=0.999, help='momentum to update d_ema', type=float)
+parser.add_argument('--lw_fake_cl_on_g', default=1.0, help='weight for gen cl_loss', type=float)
+parser.add_argument('--lw_real_cl', default=1.0, help='weight for real instance disc', type=float)
+parser.add_argument('--lw_fake_cl', default=1.0, help='weight for fake instance disc', type=float)
 
 args = parser.parse_args()
 
@@ -80,6 +86,9 @@ def display_progress(cond, fake, real, epoch, figsize=(10,5)):
 
 gen = Generator(3, 3).to(device)
 dis = PatchGAN(3 + 3).to(device)
+d_ema = copy.deepcopy(dis).eval() # discriminator for evaluating second view
+cl_head = CLHead()
+
 gen = gen.apply(_weights_init)
 patch_gan = dis.apply(_weights_init)
 augment_pipe = AugmentPipe()
@@ -100,16 +109,25 @@ def _gen_step(real_images, conditioned_images):
     recon_loss = pixelwise_loss(fake_images, real_images)
     lambda_recon = 100
 
-    return adver_loss + lambda_recon * recon_loss
+    cl_loss = run_cl(real_images, conditioned_images, cl_head, d_ema, loss_only=True )
+
+    return adver_loss + lambda_recon * recon_loss + (args.lw_fake_cl_on_g * cl_loss)
 
 def _disc_step(real_images, conditioned_images):
     fake_images = gen(conditioned_images).detach()
     fake_logits = patch_gan(fake_images, conditioned_images)
 
-    real_logits = patch_gan(real_images, conditioned_images)
+    # noise perturbation
+    with torch.no_grad():
+        delta_z = torch.randn(conditioned_images.shape, device=conditioned_images.device)
+        noisy_img = gen(conditioned_images + delta_z).detach()
+    fake_clLoss = run_cl(fake_images, conditioned_images, cl_head, d_ema, img1=noisy_img, update_q=True)
 
-    fake_loss = adversarial_loss(fake_logits, torch.zeros_like(fake_logits))
-    real_loss = adversarial_loss(real_logits, torch.ones_like(real_logits))
+    real_logits = patch_gan(real_images, conditioned_images)
+    real_clLoss = run_cl(real_images, conditioned_images, cl_head, d_ema)
+
+    fake_loss = adversarial_loss(fake_logits, torch.zeros_like(fake_logits)) + (args.lw_fake_cl * fake_clLoss)
+    real_loss = adversarial_loss(real_logits, torch.ones_like(real_logits)) + (args.lw_real_cl * real_clLoss)
     return (real_loss + fake_loss) / 2
 
 def run_cl(img, c, contrastive_head, D_ema, loss_only=False, img1=None, update_q=False):
@@ -156,6 +174,9 @@ for e in range(epoch +1, args.epochs):
         real, conditional, _ = data
         real = real.to(device)
         conditional = conditional.to(device)
+
+        for p_ema, p in zip(d_ema.parameters(), dis.parameters()):
+            p_ema.data = p_ema.data * args.momentum + p.data(1. - args.momentum)
 
         opt_G.zero_grad()
         loss = _gen_step(real, conditional)
