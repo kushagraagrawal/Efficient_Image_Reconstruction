@@ -87,7 +87,7 @@ def display_progress(cond, fake, real, epoch, figsize=(10,5)):
 gen = Generator(3, 3).to(device)
 dis = PatchGAN(3 + 3).to(device)
 d_ema = copy.deepcopy(dis).eval() # discriminator for evaluating second view
-cl_head = CLHead()
+cl_head = CLHead(inplanes=1).to(device)
 
 gen = gen.apply(_weights_init)
 patch_gan = dis.apply(_weights_init)
@@ -139,9 +139,10 @@ def run_cl(img, c, contrastive_head, D_ema, loss_only=False, img1=None, update_q
         img1 = augment_pipe(img) if img1 is None else augment_pipe(img1)
 
         # extract features for two views via D and momentum D
-        logits0 = dis(img0, c, return_feats=True)
+
+        logits0 = dis(img0, c)
         with torch.no_grad():
-            logits1 = D_ema(img1, c, return_feats=True)
+            logits1 = D_ema(img1, c)
 
         # project features into the unit sphere and calculate contrastive loss
         loss = contrastive_head(logits0, logits1, loss_only=loss_only, update_q=update_q)
@@ -176,7 +177,8 @@ for e in range(epoch +1, args.epochs):
         conditional = conditional.to(device)
 
         for p_ema, p in zip(d_ema.parameters(), dis.parameters()):
-            p_ema.data = p_ema.data * args.momentum + p.data(1. - args.momentum)
+            updated_weights = torch.add(torch.mul(p_ema.data, args.momentum) , torch.mul(p.data, 1. - args.momentum))
+            p_ema.data.copy_(updated_weights)
 
         opt_G.zero_grad()
         loss = _gen_step(real, conditional)

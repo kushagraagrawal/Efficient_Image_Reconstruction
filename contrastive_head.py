@@ -46,7 +46,7 @@ class CLHead(torch.nn.Module):
     @torch.no_grad()
     def _dequeue_and_enqueue(self, keys):
         # gather keys before updating queue
-        keys = concat_all_gather(keys)
+        # keys = concat_all_gather(keys)
 
         batch_size = keys.shape[0]
         keys = keys.T
@@ -134,6 +134,7 @@ class CLHead(torch.nn.Module):
         im_q = im_q.to(torch.float32)
         im_k = im_k.to(torch.float32)
         # compute query features
+        # print(im_q.shape, im_k.shape)
         if im_q.ndim > 2:
             im_q = im_q.mean([2,3])
         q = self.mlp(im_q)  # queries: NxC
