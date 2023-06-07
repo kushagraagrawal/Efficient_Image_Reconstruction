@@ -3,3 +3,8 @@ StyleGAN.pytorch/ffhq/
 images/
 saved_models/
 .ipynb_checkpoints/
+__pycache__/
+runs/
+Old_checkpoints/
+Updated_checkpoints/
+.DS_Store/
