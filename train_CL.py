@@ -241,6 +241,7 @@ for e in range(epoch +1, args.epochs):
                 "best_loss": best_val_loss,
             }, "checkpoint_cl_50_temp.ckpt")
 
+
     if(e%1 == 0):
         _, (real, conditional, _, _) = next(enumerate(testDL))
         conditional = conditional.to(device)
