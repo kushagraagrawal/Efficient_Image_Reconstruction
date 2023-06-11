@@ -137,6 +137,9 @@ class PatchGAN(nn.Module):
         self.d2 = DownSampleConv(64, 128)
         self.d3 = DownSampleConv(128, 256)
         self.d4 = DownSampleConv(256, 512)
+        #self.d5 = DownSampleConv(512, 512)
+        #self.d6 = DownSampleConv(512, 512)
+        #self.d7 = DownSampleConv(512, 512)
         self.final = nn.Conv2d(512, 1, kernel_size=1)
 
     def forward(self, x, y):
@@ -145,5 +148,8 @@ class PatchGAN(nn.Module):
         x1 = self.d2(x0)
         x2 = self.d3(x1)
         x3 = self.d4(x2)
-        xn = self.final(x3)
-        return xn
+        #x3 = self.d5(x3)
+        #x3 = self.d6(x3)
+        #x3 = self.d7(x3)
+        # xn = self.final(x3)
+        return x3

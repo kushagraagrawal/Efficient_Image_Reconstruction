@@ -35,13 +35,13 @@ args = parser.parse_args()
 
 writer = SummaryWriter()
 
-folders = sorted(list(os.listdir('ffhq')))[1:]
+folders = sorted(list(os.listdir('inpainting_gmcnn/pytorch/ffhq')))[1:]
 allImages = []
-root = 'ffhq'
+root = 'inpainting_gmcnn/pytorch/ffhq'
 for folder in folders:
     allImages.extend(sorted(glob.glob("%s/%s/*.png" %(root,folder))))
 
-# allImages, _ = train_test_split(allImages, test_size=0.25, random_state=42) # training on 75% data
+allImages, _ = train_test_split(allImages, test_size=0.5, random_state=42) # training on 75% data
     
 trainImage, testImage = train_test_split(allImages, test_size=0.2, random_state=42)
 valImage, testImage = train_test_split(testImage, test_size=0.5, random_state=42)
@@ -86,11 +86,11 @@ def display_progress(cond, fake, real, epoch, figsize=(10,5)):
 
 gen = Generator(3, 3).to(device)
 dis = PatchGAN(3 + 3).to(device)
-d_ema = copy.deepcopy(dis).eval() # discriminator for evaluating second view
-cl_head = CLHead()
+cl_head = CLHead(inplanes=512).to(device)
 
 gen = gen.apply(_weights_init)
-patch_gan = dis.apply(_weights_init)
+dis = dis.apply(_weights_init)
+d_ema = copy.deepcopy(dis).eval()
 augment_pipe = AugmentPipe()
 adversarial_loss = torch.nn.BCEWithLogitsLoss().to(device)
 pixelwise_loss = torch.nn.MSELoss().to(device)
@@ -102,7 +102,7 @@ def _gen_step(real_images, conditioned_images):
     # Pix2Pix has adversarial and a reconstruction loss
     # First calculate the adversarial loss
     fake_images = gen(conditioned_images)
-    disc_logits = patch_gan(fake_images, conditioned_images)
+    disc_logits = dis(fake_images, conditioned_images)
     adver_loss = adversarial_loss(disc_logits, torch.ones_like(disc_logits))
 
     # calculate reconstruction loss
@@ -115,15 +115,15 @@ def _gen_step(real_images, conditioned_images):
 
 def _disc_step(real_images, conditioned_images):
     fake_images = gen(conditioned_images).detach()
-    fake_logits = patch_gan(fake_images, conditioned_images)
+    fake_logits = dis(fake_images, conditioned_images)
 
     # noise perturbation
-    with torch.no_grad():
-        delta_z = torch.randn(conditioned_images.shape, device=conditioned_images.device)
-        noisy_img = gen(conditioned_images + delta_z).detach()
-    fake_clLoss = run_cl(fake_images, conditioned_images, cl_head, d_ema, img1=noisy_img, update_q=True)
+    # with torch.no_grad():
+    #    delta_z = torch.randn(conditioned_images.shape, device=conditioned_images.device)
+    #    noisy_img = gen(conditioned_images + delta_z).detach()
+    fake_clLoss = run_cl(fake_images, conditioned_images, cl_head, d_ema, update_q=True)
 
-    real_logits = patch_gan(real_images, conditioned_images)
+    real_logits = dis(real_images, conditioned_images)
     real_clLoss = run_cl(real_images, conditioned_images, cl_head, d_ema)
 
     fake_loss = adversarial_loss(fake_logits, torch.zeros_like(fake_logits)) + (args.lw_fake_cl * fake_clLoss)
@@ -139,9 +139,10 @@ def run_cl(img, c, contrastive_head, D_ema, loss_only=False, img1=None, update_q
         img1 = augment_pipe(img) if img1 is None else augment_pipe(img1)
 
         # extract features for two views via D and momentum D
-        logits0 = dis(img0, c, return_feats=True)
+
+        logits0 = dis(img0, c)
         with torch.no_grad():
-            logits1 = D_ema(img1, c, return_feats=True)
+            logits1 = D_ema(img1, c)
 
         # project features into the unit sphere and calculate contrastive loss
         loss = contrastive_head(logits0, logits1, loss_only=loss_only, update_q=update_q)
@@ -168,7 +169,7 @@ for e in range(epoch +1, args.epochs):
     gen_loss = 0
     dis_loss = 0
     gen.train()
-    patch_gan.train()
+    dis.train()
     for step, (data) in enumerate(tqdm(trainDL)):
         trainIter += 1
         real, conditional, _ = data
@@ -176,7 +177,8 @@ for e in range(epoch +1, args.epochs):
         conditional = conditional.to(device)
 
         for p_ema, p in zip(d_ema.parameters(), dis.parameters()):
-            p_ema.data = p_ema.data * args.momentum + p.data(1. - args.momentum)
+            updated_weights = torch.add(torch.mul(p_ema.data, args.momentum) , torch.mul(p.data, 1. - args.momentum))
+            p_ema.data.copy_(updated_weights)
 
         opt_G.zero_grad()
         loss = _gen_step(real, conditional)
@@ -206,7 +208,7 @@ for e in range(epoch +1, args.epochs):
         gen_loss = 0
         dis_loss = 0
         gen.eval()
-        patch_gan.eval()
+        dis.eval()
         for step, (data) in enumerate(tqdm(valDL)):
             valIter += 1
             real, conditional, _, _ = data
@@ -237,7 +239,7 @@ for e in range(epoch +1, args.epochs):
                 "optD": opt_D.state_dict(),
                 "optG": opt_G.state_dict(),
                 "best_loss": best_val_loss,
-            }, "checkpoint_100.ckpt")
+            }, "checkpoint_cl_50_temp.ckpt")
 
     if(e%1 == 0):
         _, (real, conditional, _, _) = next(enumerate(testDL))

@@ -11,7 +11,7 @@ import torch.nn as nn
 class CLHead(torch.nn.Module):
     def __init__(self,
         inplanes     = 256,   # Number of input features
-        temperature  = 0.2,   # Temperature of logits
+        temperature  = 2,   # Temperature of logits
         queue_size   = 3500,  # Number of stored negative samples
         momentum     = 0.999, # Momentum for updating network
     ):
@@ -46,7 +46,7 @@ class CLHead(torch.nn.Module):
     @torch.no_grad()
     def _dequeue_and_enqueue(self, keys):
         # gather keys before updating queue
-        keys = concat_all_gather(keys)
+        # keys = concat_all_gather(keys)
 
         batch_size = keys.shape[0]
         keys = keys.T
@@ -83,7 +83,7 @@ class CLHead(torch.nn.Module):
         num_gpus = batch_size_all // batch_size_this
 
         # random shuffle index
-        idx_shuffle = torch.randperm(batch_size_all).cuda(device)
+        idx_shuffle = torch.randperm(batch_size_all).to(device)
 
         # broadcast to all gpus
         torch.distributed.broadcast(idx_shuffle, src=0)
@@ -134,6 +134,7 @@ class CLHead(torch.nn.Module):
         im_q = im_q.to(torch.float32)
         im_k = im_k.to(torch.float32)
         # compute query features
+        # print(im_q.shape, im_k.shape)
         if im_q.ndim > 2:
             im_q = im_q.mean([2,3])
         q = self.mlp(im_q)  # queries: NxC
@@ -166,7 +167,7 @@ class CLHead(torch.nn.Module):
         logits /= self.temperature
 
         # labels: positive key indicators
-        labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda(device)
+        labels = torch.zeros(logits.shape[0], dtype=torch.long).to(device)
 
         # dequeue and enqueue
         if not loss_only:
