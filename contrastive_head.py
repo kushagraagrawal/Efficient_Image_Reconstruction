@@ -83,7 +83,7 @@ class CLHead(torch.nn.Module):
         num_gpus = batch_size_all // batch_size_this
 
         # random shuffle index
-        idx_shuffle = torch.randperm(batch_size_all).cuda(device)
+        idx_shuffle = torch.randperm(batch_size_all).to(device)
 
         # broadcast to all gpus
         torch.distributed.broadcast(idx_shuffle, src=0)
@@ -167,7 +167,7 @@ class CLHead(torch.nn.Module):
         logits /= self.temperature
 
         # labels: positive key indicators
-        labels = torch.zeros(logits.shape[0], dtype=torch.long).cuda(device)
+        labels = torch.zeros(logits.shape[0], dtype=torch.long).to(device)
 
         # dequeue and enqueue
         if not loss_only:

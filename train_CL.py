@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from pix2pix import Generator, PatchGAN
 from augment import AugmentPipe
 from ffhqDataset import FFHQDataset
+from artbenchDataset import ArtBenchDataset
 from contrastive_head import CLHead
 import numpy as np
 from tqdm import tqdm
@@ -29,31 +30,37 @@ parser.add_argument('--momentum', default=0.999, help='momentum to update d_ema'
 parser.add_argument('--lw_fake_cl_on_g', default=1.0, help='weight for gen cl_loss', type=float)
 parser.add_argument('--lw_real_cl', default=1.0, help='weight for real instance disc', type=float)
 parser.add_argument('--lw_fake_cl', default=1.0, help='weight for fake instance disc', type=float)
+parser.add_argument('--dataset', default="ffhq", help='dataset to run on', type=str, choices=["ffhq", "artbench"])
+parser.add_argument('--partition', default=100, help='dataset partition', type=int)
 
 args = parser.parse_args()
 
 
 writer = SummaryWriter()
 
-folders = sorted(list(os.listdir('ffhq')))[1:]
-allImages = []
-root = 'ffhq'
-for folder in folders:
-    allImages.extend(sorted(glob.glob("%s/%s/*.png" %(root,folder))))
-
-allImages, _ = train_test_split(allImages, test_size=0.75, random_state=42) # training on 75% data
-    
-trainImage, testImage = train_test_split(allImages, test_size=0.2, random_state=42)
-valImage, testImage = train_test_split(testImage, test_size=0.5, random_state=42)
-
 trans = [
         transforms.ToTensor(),
         transforms.Resize((128, 128)),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ]
-trainData = FFHQDataset(files=trainImage, transforms_=trans, mode="train")
-valData = FFHQDataset(files=valImage, transforms_=trans, mode="val")
-testData = FFHQDataset(files=testImage, transforms_=trans, mode="test")
+
+if(args.dataset == "ffhq"):
+    folders = sorted(list(os.listdir('ffhq')))[1:]
+    allImages = []
+    root = 'ffhq'
+    for folder in folders:
+        allImages.extend(sorted(glob.glob("%s/%s/*.png" %(root,folder))))
+
+    allImages, _ = train_test_split(allImages, test_size=args.partition/100, random_state=42) # training on 75% data
+    
+    trainImage, testImage = train_test_split(allImages, test_size=0.2, random_state=42)
+    valImage, testImage = train_test_split(testImage, test_size=0.5, random_state=42)
+
+    trainData = FFHQDataset(files=trainImage, transforms_=trans, mode="train")
+    valData = FFHQDataset(files=valImage, transforms_=trans, mode="val")
+    testData = FFHQDataset(files=testImage, transforms_=trans, mode="test")
+elif(args.dataset == "artbench"):
+    pass
 
 trainDL = DataLoader(trainData, batch_size=32, shuffle=True)
 valDL = DataLoader(valData, batch_size=8, shuffle=True)
@@ -118,10 +125,10 @@ def _disc_step(real_images, conditioned_images):
     fake_logits = dis(fake_images, conditioned_images)
 
     # noise perturbation
-    with torch.no_grad():
-        delta_z = torch.randn(conditioned_images.shape, device=conditioned_images.device)
-        noisy_img = gen(conditioned_images + delta_z).detach()
-    fake_clLoss = run_cl(fake_images, conditioned_images, cl_head, d_ema, img1=noisy_img, update_q=True)
+    # with torch.no_grad():
+    #    delta_z = torch.randn(conditioned_images.shape, device=conditioned_images.device)
+    #    noisy_img = gen(conditioned_images + delta_z).detach()
+    fake_clLoss = run_cl(fake_images, conditioned_images, cl_head, d_ema, update_q=True)
 
     real_logits = dis(real_images, conditioned_images)
     real_clLoss = run_cl(real_images, conditioned_images, cl_head, d_ema)
@@ -239,7 +246,7 @@ for e in range(epoch +1, args.epochs):
                 "optD": opt_D.state_dict(),
                 "optG": opt_G.state_dict(),
                 "best_loss": best_val_loss,
-            }, "checkpoint_cl_25.ckpt")
+            }, "checkpoint_cl_" + str(args.partition) + "_temp.ckpt")
 
     if(e%1 == 0):
         _, (real, conditional, _, _) = next(enumerate(testDL))
