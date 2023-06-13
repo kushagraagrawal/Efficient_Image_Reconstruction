@@ -8,7 +8,7 @@ import os
 import glob
 
 
-class FFHQDataset(Dataset):
+class ImageDataset(Dataset):
     def __init__(self, files, transforms_=None, img_size=128, mask_size=64, mode="train"):
         self.transform = transforms.Compose(transforms_)
         self.img_size = img_size
@@ -65,7 +65,7 @@ if __name__ == "__main__":
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5)),
     ]
     trainDL = DataLoader(
-        FFHQDataset(files=allImages, transforms_=transforms_, mode="train"),
+        ImageDataset(files=allImages, transforms_=transforms_, mode="train"),
         batch_size=12,
         shuffle=True,
         num_workers=1,

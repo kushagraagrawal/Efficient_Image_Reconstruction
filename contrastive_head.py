@@ -11,7 +11,7 @@ import torch.nn as nn
 class CLHead(torch.nn.Module):
     def __init__(self,
         inplanes     = 256,   # Number of input features
-        temperature  = 0.2,   # Temperature of logits
+        temperature  = 2,   # Temperature of logits
         queue_size   = 3500,  # Number of stored negative samples
         momentum     = 0.999, # Momentum for updating network
     ):

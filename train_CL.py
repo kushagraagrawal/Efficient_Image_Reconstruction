@@ -10,7 +10,7 @@ from torchvision.utils import save_image, make_grid
 import matplotlib.pyplot as plt
 from pix2pix import Generator, PatchGAN
 from augment import AugmentPipe
-from ffhqDataset import FFHQDataset
+from ffhqDataset import ImageDataset
 from artbenchDataset import ArtBenchDataset
 from contrastive_head import CLHead
 import numpy as np
@@ -51,16 +51,30 @@ if(args.dataset == "ffhq"):
     for folder in folders:
         allImages.extend(sorted(glob.glob("%s/%s/*.png" %(root,folder))))
 
-    allImages, _ = train_test_split(allImages, test_size=args.partition/100, random_state=42) # training on 75% data
+    if(args.partition < 100):
+        allImages, _ = train_test_split(allImages, test_size=args.partition/100, random_state=42) # training on 75% data
     
     trainImage, testImage = train_test_split(allImages, test_size=0.2, random_state=42)
     valImage, testImage = train_test_split(testImage, test_size=0.5, random_state=42)
 
-    trainData = FFHQDataset(files=trainImage, transforms_=trans, mode="train")
-    valData = FFHQDataset(files=valImage, transforms_=trans, mode="val")
-    testData = FFHQDataset(files=testImage, transforms_=trans, mode="test")
 elif(args.dataset == "artbench"):
-    pass
+    folders = sorted(list(os.listdir('artbench-10-imagefolder-split')))[1:]
+    paintingTypes = sorted(list(os.listdir('artbench-10-imagefolder-split/train')))[1:]
+    allImages = []
+    root = 'artbench-10-imagefolder-split'
+    for painting in paintingTypes:
+        for folder in folders:
+            allImages.extend(sorted(glob.glob("%s/%s/%s/*.jpg" %(root,folder,painting))))
+
+    if(args.partition < 100):
+        allImages, _ = train_test_split(allImages, test_size=args.partition/100, random_state=42) # training on 75% data
+    
+    trainImage, testImage = train_test_split(allImages, test_size=0.2, random_state=42)
+    valImage, testImage = train_test_split(testImage, test_size=0.5, random_state=42)
+
+trainData = ImageDataset(files=trainImage, transforms_=trans, mode="train")
+valData = ImageDataset(files=valImage, transforms_=trans, mode="val")
+testData = ImageDataset(files=testImage, transforms_=trans, mode="test")
 
 trainDL = DataLoader(trainData, batch_size=32, shuffle=True)
 valDL = DataLoader(valData, batch_size=8, shuffle=True)
@@ -246,7 +260,7 @@ for e in range(epoch +1, args.epochs):
                 "optD": opt_D.state_dict(),
                 "optG": opt_G.state_dict(),
                 "best_loss": best_val_loss,
-            }, "checkpoint_cl_" + str(args.partition) + "_temp.ckpt")
+            }, "checkpoint_cl_" + str(100 - args.partition) + "_temp.ckpt")
 
     if(e%1 == 0):
         _, (real, conditional, _, _) = next(enumerate(testDL))

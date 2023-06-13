@@ -28,9 +28,9 @@ args = parser.parse_args()
 
 writer = SummaryWriter()
 
-folders = sorted(list(os.listdir('ffhq')))[1:]
+folders = sorted(list(os.listdir('inpainting_gmcnn/pytorch/ffhq')))[1:]
 allImages = []
-root = 'ffhq'
+root = 'inpainting_gmcnn/pytorch/ffhq'
 for folder in folders:
     allImages.extend(sorted(glob.glob("%s/%s/*.png" %(root,folder))))
 
@@ -105,6 +105,7 @@ def _disc_step(real_images, conditioned_images):
     fake_logits = patch_gan(fake_images, conditioned_images)
 
     real_logits = patch_gan(real_images, conditioned_images)
+    # print(fake_logits.shape, real_logits.shape)
 
     fake_loss = adversarial_loss(fake_logits, torch.zeros_like(fake_logits))
     real_loss = adversarial_loss(real_logits, torch.ones_like(real_logits))
