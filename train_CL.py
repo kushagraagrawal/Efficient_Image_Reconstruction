@@ -260,7 +260,7 @@ for e in range(epoch +1, args.epochs):
                 "optD": opt_D.state_dict(),
                 "optG": opt_G.state_dict(),
                 "best_loss": best_val_loss,
-            }, "checkpoint_cl_" + str(100 - args.partition) + "_temp.ckpt")
+            }, "checkpoint_cl_" + args.dataset + "_" + str(100 - args.partition) + "_temp.ckpt")
 
     if(e%1 == 0):
         _, (real, conditional, _, _) = next(enumerate(testDL))

@@ -6,6 +6,7 @@ import numpy as np
 from PIL import Image
 import os
 import glob
+from torchvision.utils import save_image
 
 
 class ImageDataset(Dataset):
@@ -53,11 +54,13 @@ class ImageDataset(Dataset):
         return len(self.files)
     
 if __name__ == "__main__":
-    folders = sorted(list(os.listdir('StyleGAN.pytorch/ffhq')))[1:]
+    folders = sorted(list(os.listdir('artbench-10-imagefolder-split')))[1:]
+    paintingTypes = sorted(list(os.listdir('artbench-10-imagefolder-split/train')))[1:]
     allImages = []
-    root = 'StyleGAN.pytorch/ffhq'
-    for folder in folders:
-        allImages.extend(sorted(glob.glob("%s/%s/*.png" %(root,folder))))
+    root = 'artbench-10-imagefolder-split'
+    for painting in paintingTypes:
+        for folder in folders:
+            allImages.extend(sorted(glob.glob("%s/%s/%s/*.jpg" %(root,folder,painting))))
     
     transforms_ = [
         transforms.Resize((128, 128), Image.BICUBIC),
@@ -66,10 +69,11 @@ if __name__ == "__main__":
     ]
     trainDL = DataLoader(
         ImageDataset(files=allImages, transforms_=transforms_, mode="train"),
-        batch_size=12,
+        batch_size=20,
         shuffle=True,
         num_workers=1,
     )
 
-    _, (img, masked_img, aux) = next(enumerate(trainDL))
-    print(img.shape, masked_img.shape, aux.shape)
+    _, (img, _, _) = next(enumerate(trainDL))
+    save_image(img, "sample_artbench.png", nrow=5, normalize=True)
+    # print(img.shape, masked_img.shape, aux.shape)
