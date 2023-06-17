@@ -1,5 +1,7 @@
 # Efficient Image Inpainting using Deep Generative Models
 
+Using the Instance Generation method for Image Inpainting in a limited data setting.
+
 Checkpoints drive - [Google Drive](https://drive.google.com/drive/folders/1N6SkpKG9JjuT5GKuxInMUA3sQeQQQT5B?usp=sharing)
 
 Refer to this directory to download FFHQ - https://github.com/NVlabs/ffhq-dataset
