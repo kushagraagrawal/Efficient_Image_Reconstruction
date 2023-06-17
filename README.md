@@ -8,7 +8,7 @@ Refer to this directory to download FFHQ - https://github.com/NVlabs/ffhq-datase
 
 Refer to this directory to download ArtBench - https://github.com/liaopeiyuan/artbench
 
-Model implementations - pix2pix.py and CEGAN.py
+Model implementations - `pix2pix.py` and `CEGAN.py`
 
 ## Training InsGen
 - Please refer to the Google Drive above for checkpoints
