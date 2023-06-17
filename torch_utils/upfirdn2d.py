@@ -9,15 +9,10 @@
 """Custom PyTorch ops for efficient resampling of 2D images."""
 
 import os
-import warnings
 import numpy as np
 import torch
-import traceback
 import torch.nn.functional as F
 
-# from .. import custom_ops
-# from .. import misc
-# from . import conv2d_gradfix
 from torch_utils import misc
 
 #----------------------------------------------------------------------------

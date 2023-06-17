@@ -136,10 +136,6 @@ def _disc_step(real_images, conditioned_images):
     fake_images = gen(conditioned_images).detach()
     fake_logits = dis(fake_images, conditioned_images)
 
-    # noise perturbation
-    # with torch.no_grad():
-    #    delta_z = torch.randn(conditioned_images.shape, device=conditioned_images.device)
-    #    noisy_img = gen(conditioned_images + delta_z).detach()
     fake_clLoss = run_cl(fake_images, conditioned_images, cl_head, d_ema, update_q=True)
 
     real_logits = dis(real_images, conditioned_images)
@@ -243,8 +239,6 @@ for e in range(epoch +1, args.epochs):
             dis_loss += loss.item()
 
             writer.add_scalar("Discriminator loss/val_iteration", loss.item(), valIter)
-
-            # print("step val loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/(step+1), dis_loss/(step+1)))
         
         print("step val loss: {:.4f}, dis loss: {:.4f}".format(gen_loss/len(valDL), dis_loss/len(valDL)))
         writer.add_scalar("Epoch loss val Generator/epoch", gen_loss/len(valDL), e)

@@ -9,11 +9,10 @@
 import numpy as np
 import scipy.signal
 import torch
-# from torch_utils import misc
 from torch_utils import upfirdn2d
-# from torch_utils.ops import grid_sample_gradfix
-# from torch_utils.ops import conv2d_gradfix
 import torch.nn.functional as F
+
+# Used InsGen's implementation - https://github.com/genforce/insgen/blob/main/training/augment.py
 
 #----------------------------------------------------------------------------
 # Coefficients of various wavelet decomposition low-pass filters.

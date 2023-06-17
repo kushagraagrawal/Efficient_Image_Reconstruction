@@ -1,9 +1,9 @@
 # Code are mainly borrowed from the official implementation of MoCo (https://github.com/facebookresearch/moco)
+# Reference - https://github.com/genforce/insgen/blob/main/training/contrastive_head.py
 
 import numpy as np
 import torch
 import torch.nn as nn
-# from torch_utils import persistence
 
 #----------------------------------------------------------------------------
 

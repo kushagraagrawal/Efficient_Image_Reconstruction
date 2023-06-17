@@ -83,7 +83,6 @@ def evaluation_step(engine, batch):
         gen.eval()
         real, conditional, _, _ = batch
         conditional = conditional.to(device)
-        # noise = torch.randn(batch.shape[0], 100, 1, 1).to(device)
         generated = gen(conditional)
         fake = interpolate(generated.cpu())
         real = interpolate(real)
