@@ -3,6 +3,7 @@
 Checkpoints drive - [Google Drive](https://drive.google.com/drive/folders/1N6SkpKG9JjuT5GKuxInMUA3sQeQQQT5B?usp=sharing)
 
 Refer to this directory to download FFHQ - https://github.com/NVlabs/ffhq-dataset
+
 Refer to this directory to download ArtBench - https://github.com/liaopeiyuan/artbench
 
 Model implementations - pix2pix.py and CEGAN.py
