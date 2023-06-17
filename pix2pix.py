@@ -88,14 +88,12 @@ class Generator(nn.Module):
             DownSampleConv(256, 512),  # bs x 512 x 16 x 16
             DownSampleConv(512, 512),  # bs x 512 x 8 x 8
             DownSampleConv(512, 512),  # bs x 512 x 4 x 4
-            # DownSampleConv(512, 512),  # bs x 512 x 2 x 2
             DownSampleConv(512, 512, batchnorm=False),  # bs x 512 x 1 x 1
         ]
 
         # decoder/upsample convs
         self.decoders = [
             UpSampleConv(512, 512, dropout=True),  # bs x 512 x 2 x 2
-            # UpSampleConv(1024, 512, dropout=True),  # bs x 512 x 4 x 4
             UpSampleConv(1024, 512, dropout=True),  # bs x 512 x 8 x 8
             UpSampleConv(1024, 512),  # bs x 512 x 16 x 16
             UpSampleConv(1024, 256),  # bs x 256 x 32 x 32
@@ -121,11 +119,9 @@ class Generator(nn.Module):
 
         for decoder, skip in zip(decoders, skips_cons):
             x = decoder(x)
-            # print(x.shape, skip.shape)
             x = torch.cat((x, skip), axis=1)
 
         x = self.decoders[-1](x)
-        # print(x.shape)
         x = self.final_conv(x)
         return self.tanh(x)
     
@@ -137,9 +133,6 @@ class PatchGAN(nn.Module):
         self.d2 = DownSampleConv(64, 128)
         self.d3 = DownSampleConv(128, 256)
         self.d4 = DownSampleConv(256, 512)
-        #self.d5 = DownSampleConv(512, 512)
-        #self.d6 = DownSampleConv(512, 512)
-        #self.d7 = DownSampleConv(512, 512)
         self.final = nn.Conv2d(512, 1, kernel_size=1)
 
     def forward(self, x, y):
@@ -148,8 +141,4 @@ class PatchGAN(nn.Module):
         x1 = self.d2(x0)
         x2 = self.d3(x1)
         x3 = self.d4(x2)
-        #x3 = self.d5(x3)
-        #x3 = self.d6(x3)
-        #x3 = self.d7(x3)
-        # xn = self.final(x3)
         return x3

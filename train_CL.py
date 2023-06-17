@@ -15,7 +15,6 @@ from contrastive_head import CLHead
 import numpy as np
 from tqdm import tqdm
 
-import PIL.Image as Image
 import os
 import glob
 from sklearn.model_selection import train_test_split
