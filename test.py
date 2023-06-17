@@ -8,7 +8,7 @@ import torchvision.transforms as transforms
 from torchvision.utils import save_image, make_grid
 import matplotlib.pyplot as plt
 from pix2pix import Generator
-from ffhqDataset import FFHQDataset
+from ffhqDataset import ImageDataset
 import numpy as np
 from tqdm import tqdm
 
@@ -25,13 +25,23 @@ import cv2
 parser = argparse.ArgumentParser(description='training Params')
 parser.add_argument('--checkpoint', default=None, help='restore training from checkpoint', type=str, required=True)
 parser.add_argument('--partition', default=100, help='share of training data', type=int)
+parser.add_argument('--dataset', default="ffhq", help='dataset to run on', type=str, choices=["ffhq", "artbench"])
 args = parser.parse_args()
 
-folders = sorted(list(os.listdir('ffhq')))[1:]
-allImages = []
-root = 'ffhq'
-for folder in folders:
-    allImages.extend(sorted(glob.glob("%s/%s/*.png" %(root,folder))))
+if(args.dataset == "ffhq"):
+    folders = sorted(list(os.listdir('ffhq')))[1:]
+    allImages = []
+    root = 'ffhq'
+    for folder in folders:
+        allImages.extend(sorted(glob.glob("%s/%s/*.png" %(root,folder))))
+elif(args.dataset == "artbench"):
+    folders = sorted(list(os.listdir('artbench-10-imagefolder-split')))[1:]
+    paintingTypes = sorted(list(os.listdir('artbench-10-imagefolder-split/train')))[1:]
+    allImages = []
+    root = 'artbench-10-imagefolder-split'
+    for painting in paintingTypes:
+        for folder in folders:
+            allImages.extend(sorted(glob.glob("%s/%s/%s/*.jpg" %(root,folder,painting))))
    
 _, testImage = train_test_split(allImages, test_size=0.2, random_state=42)
 _, testImage = train_test_split(testImage, test_size=0.5, random_state=42)
@@ -41,8 +51,8 @@ trans = [
         transforms.Resize((128, 128)),
         transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
     ]
-testData = FFHQDataset(files=testImage, transforms_=trans, mode="test")
-testDL = DataLoader(testData, batch_size=8, shuffle=False)
+testData = ImageDataset(files=testImage, transforms_=trans, mode="test")
+testDL = DataLoader(testData, batch_size=32, shuffle=False)
 
 device = 'cpu'
 if(torch.cuda.is_available()):
@@ -113,6 +123,7 @@ with torch.no_grad():
             psnr_val += sewar.psnr(pred, gt)
             ssim_val += sewar.ssim(pred, gt)[0]
         if(step % 100 == 0):
-            save_image(generatedImages, "images/%d_%d.png"%(step, args.partition), nrow=6, normalize=True)
+            sampleImage = torch.cat((real.data, conditional.data, generatedImages.data), -2)
+            save_image(sampleImage, "images/%d_%d.png"%(step, args.partition), nrow=6, normalize=True)
     print("mean psnr: {:.4f}, mean ssim: {:.4f}".format(psnr_val/len(testImage), ssim_val/len(testImage)))
 

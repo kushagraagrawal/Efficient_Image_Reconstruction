@@ -11,7 +11,6 @@ import matplotlib.pyplot as plt
 from pix2pix import Generator, PatchGAN
 from augment import AugmentPipe
 from ffhqDataset import ImageDataset
-from artbenchDataset import ArtBenchDataset
 from contrastive_head import CLHead
 import numpy as np
 from tqdm import tqdm
@@ -260,7 +259,7 @@ for e in range(epoch +1, args.epochs):
                 "optD": opt_D.state_dict(),
                 "optG": opt_G.state_dict(),
                 "best_loss": best_val_loss,
-            }, "checkpoint_cl_" + args.dataset + "_" + str(100 - args.partition) + "_temp.ckpt")
+            }, "checkpoint_" + args.dataset + "_" + str(100 - args.partition) + "_temp.ckpt")
 
     if(e%1 == 0):
         _, (real, conditional, _, _) = next(enumerate(testDL))

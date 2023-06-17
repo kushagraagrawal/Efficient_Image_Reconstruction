@@ -1,5 +1,0 @@
-yacs
-tqdm
-numpy
-torchvision
-torch
